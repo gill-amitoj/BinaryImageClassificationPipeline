@@ -1,6 +1,8 @@
 # Intelligent Image Classification
 
 Transfer learning with ResNet‑18 for multi‑class image classification, evaluation with Grad‑CAM, and a Flask web app for real‑time inference.
+<img width="1353" height="756" alt="image" src="https://github.com/user-attachments/assets/51cfa61a-ccd7-4c50-bd21-b89e83eec343" />
+
 
 ## Structure
 
