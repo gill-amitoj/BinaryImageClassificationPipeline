@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy & Ethical Use</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; }
+    header { padding: 20px; background: #111827; color: white; }
+    main { max-width: 900px; margin: 30px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 24px; }
+    h2 { margin-top: 0; }
+    a { color: #2563eb; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Privacy & Ethical Use</h1>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Data Handling</h2>
+      <ul>
+        <li>Uploads are processed locally on your machine and not shared externally.</li>
+        <li>Images are stored in <code>app/static/uploads/</code> and Grad‑CAM overlays in <code>app/static/outputs/</code>.</li>
+        <li>You can delete your results from the results page using the "Delete this result" button.</li>
+        <li>For production, consider auto‑deletion and HTTPS/TLS.</li>
+      </ul>
+      <h2>Explainability</h2>
+      <ul>
+        <li>Grad‑CAM highlights regions that influenced the prediction, but it is an approximation.</li>
+        <li>Use interpretability as guidance, not as absolute truth.</li>
+      </ul>
+      <h2>Acceptable Use</h2>
+      <ul>
+        <li>Use images you own or have permission to use. Respect licenses and privacy.</li>
+        <li>Do not use the system for sensitive or personal data without explicit consent and legal basis.</li>
+        <li>Do not deploy with harmful, discriminatory, or illegal use cases.</li>
+      </ul>
+      <p><a href="/">← Back to home</a></p>
+    </div>
+  </main>
+</body>
+</html>

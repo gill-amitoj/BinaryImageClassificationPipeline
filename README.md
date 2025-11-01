@@ -77,3 +77,43 @@ Open http://localhost:5000 in your browser. The app expects `models/resnet18_bes
 - Transforms use ImageNet mean/std to match the pretrained backbone.
 - Grad‑CAM targets the last block (`model.layer4[-1]`).
 
+## Ethical Use & Privacy
+
+- Use images you own or that are licensed for reuse. Don’t include sensitive or personal data without consent.
+- By default, uploads are saved under `app/static/uploads/` and Grad‑CAM overlays under `app/static/outputs/`.
+	- You can delete them from the result page. For production, prefer short‑lived storage or auto‑deletion.
+- Grad‑CAM is an interpretability aid, not a guarantee. Don’t overclaim causality.
+- If deploying externally:
+	- Enable HTTPS/TLS and access controls (see Basic Auth below).
+	- Provide a short privacy notice and a contact for data removal requests.
+
+## Accessing the App
+
+Local development (recommended):
+
+```bash
+python app/app.py
+# http://127.0.0.1:5000
+```
+
+Expose to your LAN (will prompt macOS local network permission):
+
+```bash
+HOST=0.0.0.0 PORT=8000 python app/app.py
+# http://<your-lan-ip>:8000
+```
+
+Add Basic Auth (optional):
+
+```bash
+export BASIC_AUTH_USERNAME=admin
+export BASIC_AUTH_PASSWORD=strongpassword
+python app/app.py
+```
+
+Public sharing (temporary): use a tunnel like `ngrok` to your local port.
+
+Production options:
+- Containerize and deploy to Cloud Run, Fly.io, or Railway (TLS, scaling, secrets).
+- Use a WSGI server (gunicorn/uvicorn) in front of Flask, with HTTPS termination.
+

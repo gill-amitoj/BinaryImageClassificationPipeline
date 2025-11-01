@@ -21,6 +21,16 @@
   </header>
   <main>
     <p class="pill">Predicted: {{ pred_class }} • Confidence: {{ confidence }}</p>
+    {% if topk %}
+    <div class="card" style="margin:16px 0;">
+      <h3>Top predictions</h3>
+      <ul>
+        {% for item in topk %}
+          <li><strong>{{ item.label }}</strong> — {{ item.percent }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
     <div class="grid">
       <div class="card">
         <h3>Original</h3>
@@ -31,6 +41,11 @@
         <img src="{{ cam_image }}" alt="Grad-CAM" />
       </div>
     </div>
+    <form method="post" action="/delete_result" style="margin-top:16px;">
+      <input type="hidden" name="original" value="{{ original_image | replace('/static/uploads/', '') }}" />
+      <input type="hidden" name="cam" value="{{ cam_image | replace('/static/outputs/', '') }}" />
+      <button type="submit">Delete this result</button>
+    </form>
     <p><a href="/">← Classify another image</a></p>
   </main>
 </body>

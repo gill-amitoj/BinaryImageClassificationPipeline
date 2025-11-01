@@ -1,0 +1,38 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# VS Code
+.vscode/
+
+# App uploads/outputs (runtime artifacts)
+app/static/uploads/
+app/static/outputs/
+
+# Models and eval artifacts (large/binary)
+models/*.pth
+models/*.pt
+models/*.ckpt
+models/eval/
+
+# Logs and caches
+logs/
+*.log
+.cache/
+**/.mypy_cache/
+**/.pytest_cache/

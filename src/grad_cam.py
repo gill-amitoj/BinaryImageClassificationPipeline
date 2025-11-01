@@ -35,14 +35,20 @@ class GradCAM:
         self.gradients: Optional[torch.Tensor] = None
 
         def forward_hook(_, __, output):
-            self.activations = output.detach()
+            # Keep activations with graph so we can access .grad after backward
+            self.activations = output
+            try:
+                output.retain_grad()
+            except Exception:
+                pass
 
+        # Backward hook is optional; we prefer grads from retained activations
         def backward_hook(_, grad_input, grad_output):
-            # grad_output is a tuple with length 1 for most layers
-            self.gradients = grad_output[0].detach()
+            # grad_output is a tuple; keep for compatibility if needed
+            self.gradients = grad_output[0]
 
         self.fh = target_layer.register_forward_hook(forward_hook)
-        self.bh = target_layer.register_full_backward_hook(backward_hook)  # full for safety
+        self.bh = target_layer.register_full_backward_hook(backward_hook)  # keep as fallback
 
     def remove_hooks(self):
         self.fh.remove()
@@ -61,16 +67,21 @@ class GradCAM:
         """
         assert input_tensor.ndim == 4 and input_tensor.size(0) == 1, "input_tensor must be 1xCxHxW"
 
+        # Ensure we track gradients even if model params are frozen
+        x = input_tensor.clone().detach().requires_grad_(True)
         self.model.zero_grad(set_to_none=True)
-        logits = self.model(input_tensor)
+        logits = self.model(x)
         if class_idx is None:
             class_idx = int(logits.argmax(dim=1).item())
         score = logits[0, class_idx]
         score.backward()
 
-        assert self.gradients is not None and self.activations is not None, "Hooks didn't capture tensors"
-
-        grads = self.gradients  # [B, C, H', W']
+        assert self.activations is not None, "Forward hook didn't capture activations"
+        # Prefer gradients from retained activations; fall back to module hook grads
+        grads = getattr(self.activations, "grad", None)
+        if grads is None:
+            assert self.gradients is not None, "Backward hook didn't capture gradients"
+            grads = self.gradients
         acts = self.activations  # [B, C, H', W']
 
         weights = grads.mean(dim=(2, 3), keepdim=True)  # [B, C, 1, 1]
@@ -79,7 +90,7 @@ class GradCAM:
 
         # Upsample to input spatial size
         cam = torch.nn.functional.interpolate(
-            cam.unsqueeze(0).unsqueeze(0), size=input_tensor.shape[-2:], mode="bilinear", align_corners=False
+            cam.unsqueeze(0).unsqueeze(0), size=x.shape[-2:], mode="bilinear", align_corners=False
         )[0, 0]
 
         return self._normalize_cam(cam)

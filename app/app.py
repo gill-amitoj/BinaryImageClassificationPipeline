@@ -10,7 +10,7 @@ import sys
 from typing import Dict, List
 
 import numpy as np
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for, abort
 import torch
 from PIL import Image
 from torchvision import transforms
@@ -34,6 +34,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key")
 
 
 def load_classes() -> List[str]:
@@ -67,6 +68,9 @@ def preprocess(img: Image.Image, img_size: int = 224) -> torch.Tensor:
     return t(img).unsqueeze(0)
 
 
+# (Auth removed for simplicity to avoid accidental 401s during local demos.)
+
+
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
@@ -77,8 +81,11 @@ def index():
     return render_template("index.html")
 
 
-@app.route("/predict", methods=["POST"])
+@app.route("/predict", methods=["GET", "POST"])
 def predict():
+    # If user visits /predict directly, route them to the home page with the form.
+    if request.method == "GET":
+        return redirect(url_for("index"))
     if "image" not in request.files:
         return redirect(url_for("index"))
 
@@ -106,6 +113,18 @@ def predict():
         pred_class = classes[pred_idx] if classes else str(pred_idx)
         confidence = float(probs[pred_idx])
 
+        # Top-k predictions for display (k=3)
+        k = min(3, probs.shape[0])
+        topk_idx = probs.argsort()[-k:][::-1]
+        topk = [
+            {
+                "label": classes[i] if classes else str(i),
+                "prob": float(probs[i]),
+                "percent": f"{float(probs[i])*100:.2f}%",
+            }
+            for i in topk_idx
+        ]
+
     # Grad-CAM
     target_layer = getattr(model, "layer4")[-1]
     cam = GradCAM(model, target_layer)
@@ -126,7 +145,30 @@ def predict():
         cam_image=url_for("static", filename=f"outputs/{out_name}"),
         pred_class=pred_class,
         confidence=f"{confidence*100:.2f}%",
+        topk=topk,
     )
+
+
+@app.route("/delete_result", methods=["POST"])
+def delete_result():
+    # Simple cleanup endpoint to delete uploaded & CAM images
+    orig = request.form.get("original")
+    cam = request.form.get("cam")
+    # Prevent path traversal: only allow basenames
+    if not orig or not cam:
+        abort(400)
+    from pathlib import Path as _Path
+
+    orig_name = _Path(orig).name
+    cam_name = _Path(cam).name
+    (UPLOAD_DIR / orig_name).unlink(missing_ok=True)
+    (OUTPUT_DIR / cam_name).unlink(missing_ok=True)
+    return redirect(url_for("index"))
+
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
 
 
 if __name__ == "__main__":

@@ -3,10 +3,39 @@
 # Author: Amitoj Singh (CCID: amitoj3)
 # ----------------------------------------------------------
 
+import os
+from typing import List, Tuple
+
 import torch
 from torchvision import datasets, transforms
+from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from PIL import ImageFile
+from pathlib import Path
+
+# Skip obviously problematic files/folders at load time
+ALLOWED_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
+
+def _is_valid_file(path: str) -> bool:
+    p = Path(path)
+    # Ignore any file inside hidden or special folders (e.g., _corrupted)
+    if any(part.startswith("_") or part.startswith(".") for part in p.parts):
+        return False
+    return p.suffix.lower() in ALLOWED_EXTS
+
+
+class FilteredImageFolder(ImageFolder):
+    """ImageFolder that ignores classes (subfolders) starting with '_' or '.'"""
+
+    def find_classes(self, directory: str) -> Tuple[List[str], dict]:  # type: ignore[override]
+        classes = [
+            d.name
+            for d in os.scandir(directory)
+            if d.is_dir() and not d.name.startswith("_") and not d.name.startswith(".")
+        ]
+        classes.sort()
+        class_to_idx = {cls_name: i for i, cls_name in enumerate(classes)}
+        return classes, class_to_idx
 
 # Allow loading truncated images instead of crashing
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -29,8 +58,12 @@ def get_data_loaders(train_dir, val_dir, batch_size=32, img_size=224):
                              std=[0.229, 0.224, 0.225])
     ])
 
-    train_dataset = datasets.ImageFolder(train_dir, transform=transform_train)
-    val_dataset = datasets.ImageFolder(val_dir, transform=transform_val)
+    train_dataset = FilteredImageFolder(
+        train_dir, transform=transform_train, is_valid_file=_is_valid_file, allow_empty=True
+    )
+    val_dataset = FilteredImageFolder(
+        val_dir, transform=transform_val, is_valid_file=_is_valid_file, allow_empty=True
+    )
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
