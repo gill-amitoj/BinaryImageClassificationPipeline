@@ -73,8 +73,6 @@ Start the web app to upload an image and see the prediction + Grad‑CAM:
 python3 app/app.py
 ```
 
-Open http://localhost:5000 in your browser. The app expects `models/resnet18_best.pth` and `models/classes.json` from training.
-
 ## Notes
 
 - ResNet‑18 is loaded with ImageNet weights via the modern `ResNet18_Weights.DEFAULT` API.
