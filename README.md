@@ -53,5 +53,5 @@ python3 -m src.evaluate --data_dir data/val \
 - Grad-CAM aids interpretability, not a guarantee of fairness.
 
 ---
-For questions or improvements, feel free to contribute!
+
 
