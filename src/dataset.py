@@ -43,16 +43,23 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 def get_data_loaders(train_dir, val_dir, batch_size=32, img_size=224):
     """Return PyTorch dataloaders for training and validation."""
     transform_train = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
+        transforms.Resize((img_size + 32, img_size + 32)),
+        transforms.RandomCrop(img_size),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomRotation(10),
+        transforms.RandomVerticalFlip(p=0.2),
+        transforms.RandomRotation(20),
+        transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.1),
+        transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.85, 1.15)),
+        transforms.RandomGrayscale(p=0.1),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
+                             std=[0.229, 0.224, 0.225]),
+        transforms.RandomErasing(p=0.2),
     ])
 
     transform_val = transforms.Compose([
-        transforms.Resize((img_size, img_size)),
+        transforms.Resize((img_size + 32, img_size + 32)),
+        transforms.CenterCrop(img_size),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])

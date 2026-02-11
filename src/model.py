@@ -12,21 +12,25 @@ def build_model(num_classes: int) -> nn.Module:
     Build a ResNet-18 transfer learning model.
 
     - Loads ImageNet-pretrained weights using the modern torchvision API
-    - Freezes the backbone
+    - Freezes the backbone except layer4 (fine-tuned for better accuracy)
     - Replaces the final fully-connected head for `num_classes`
     """
     weights = ResNet18_Weights.DEFAULT
     model = resnet18(weights=weights)
 
-    # Freeze backbone
+    # Freeze all backbone layers first
     for param in model.parameters():
         param.requires_grad = False
+
+    # Unfreeze layer4 for fine-tuning (critical for small datasets)
+    for param in model.layer4.parameters():
+        param.requires_grad = True
 
     in_features = model.fc.in_features
     model.fc = nn.Sequential(
         nn.Linear(in_features, 256),
         nn.ReLU(),
-        nn.Dropout(0.4),
+        nn.Dropout(0.3),
         nn.Linear(256, num_classes)
     )
     return model

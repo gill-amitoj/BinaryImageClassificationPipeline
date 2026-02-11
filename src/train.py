@@ -14,6 +14,7 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -98,14 +99,15 @@ def main():
     parser.add_argument("--train_dir", type=str, default="data/train", help="Training images root")
     parser.add_argument("--val_dir", type=str, default="data/val", help="Validation images root")
     parser.add_argument("--batch_size", type=int, default=32)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--epochs", type=int, default=30)
+    parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--img_size", type=int, default=224)
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--output_dir", type=str, default="models")
     parser.add_argument("--checkpoint_name", type=str, default="resnet18_best.pth")
     parser.add_argument("--unfreeze_after", type=int, default=0, help="Epoch after which to unfreeze layer4 (0=never)")
     parser.add_argument("--unfrozen_lr", type=float, default=1e-4, help="LR for unfrozen layer4 if enabled")
+    parser.add_argument("--patience", type=int, default=8, help="Early stopping patience (0=disabled)")
 
     args = parser.parse_args()
 
@@ -128,12 +130,14 @@ def main():
     model = build_model(num_classes)
     model.to(device)
 
-    # Train only the head
+    # Train only the head initially (layer4 is already unfrozen in model.py)
     criterion = nn.CrossEntropyLoss()
     optimizer = make_optimizer_for_head(model, lr=args.lr)
+    scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-6)
 
     best_val_acc = 0.0
     best_path = Path(args.output_dir) / args.checkpoint_name
+    patience_counter = 0
 
     for epoch in range(1, args.epochs + 1):
         # Optionally unfreeze layer4 after warmup
@@ -142,24 +146,34 @@ def main():
                 for p in model.layer4.parameters():
                     p.requires_grad = True
                 optimizer = make_optimizer_head_and_layer4(model, head_lr=args.lr, layer4_lr=args.unfrozen_lr)
+                scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs - epoch + 1, eta_min=1e-6)
                 print(
                     f"[Fine-tune] Unfroze layer4 at epoch {epoch}. Head LR={args.lr}, layer4 LR={args.unfrozen_lr}"
                 )
         train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
         val_loss, val_acc = evaluate(model, val_loader, criterion, device)
+        scheduler.step()
 
+        current_lr = optimizer.param_groups[0]["lr"]
         print(
             f"Epoch {epoch:02d}/{args.epochs} | "
             f"train_loss={train_loss:.4f} acc={train_acc:.4f} | "
-            f"val_loss={val_loss:.4f} acc={val_acc:.4f}"
+            f"val_loss={val_loss:.4f} acc={val_acc:.4f} | "
+            f"lr={current_lr:.6f}"
         )
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
+            patience_counter = 0
             save_checkpoint(model, best_path)
             print(f"Saved best model to {best_path} (val_acc={best_val_acc:.4f})")
+        else:
+            patience_counter += 1
+            if args.patience > 0 and patience_counter >= args.patience:
+                print(f"Early stopping at epoch {epoch} (no improvement for {args.patience} epochs)")
+                break
 
-    print("Training complete.")
+    print(f"Training complete. Best val accuracy: {best_val_acc:.4f}")
 
 
 if __name__ == "__main__":
